@@ -1,39 +1,74 @@
 version: "3.8"
+
 services:
   mongodb:
-    container_name: mongo-service
-    image: mongo:latest
+    container_name: wanderlust-mongodb
+    image: mongo:6.0
     volumes:
-      - ./backend/data:/data
+      - mongodb_data:/data/db
     ports:
       - "27017:27017"
-
-  backend:
-    container_name: backend
-    build: ./backend
-    env_file:
-      - ./backend/.env.docker
-    ports:
-      - "31100:8080"
-    depends_on:
-      - mongodb
-
-  frontend:
-    container_name: frontend
-    build: ./frontend
-    env_file:
-      - ./frontend/.env.docker
-    ports:
-      - "5173:5173"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh 172.28.39.56:27017/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
-    container_name: redis-service
-    restart: unless-stopped
-    image: redis:7.0.5-alpine 
-    expose:
-        - 6379
+    container_name: wanderlust-redis
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: wanderlust-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev  # Recommended to create a development Dockerfile
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "31100:8080"
+    env_file:
+      - ./backend/.env.docker
+    environment:
+      - NODE_ENV=development
+      - DEBUG=express:*
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    container_name: wanderlust-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env.docker
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:31100
+    depends_on:
+      - backend
 
 volumes:
-  data:
+  mongodb_data:
+  redis_data:
