@@ -1,31 +1,26 @@
-# Stage 1
+# Stage 1: Builder
 FROM node:21 AS backend-builder
-
-# setup the working dir
 WORKDIR /app
-
-# code
 COPY . .
+RUN npm i && npm run test
 
-# packages install
-RUN npm i
-
-# tests
-RUN npm run test
-
-# Stage 2
+# Stage 2: Runtime
 FROM node:21-slim
-
-# setup the working dir
 WORKDIR /app
-
-# copy the above stage as compressed
 COPY --from=backend-builder /app .
 
-COPY .env.docker .env
+# Environment configuration
+ARG ENV=production
+COPY .env.${ENV} .env
 
-# Port
+# Database connection configuration
+RUN if [ "$ENV" = "development" ]; then \
+      echo "MONGODB_URI=mongodb://172.28.39.56:27017/wanderlust" >> .env; \
+      echo "REDIS_URL=redis://172.28.39.56:6379" >> .env; \
+    else \
+      echo "MONGODB_URI=mongodb://mongo-service:27017/wanderlust" >> .env; \
+      echo "REDIS_URL=redis://redis-service:6379" >> .env; \
+    fi
+
 EXPOSE 8080
-
-# App
 CMD ["npm", "start"]
