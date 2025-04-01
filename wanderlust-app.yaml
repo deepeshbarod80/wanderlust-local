@@ -10,7 +10,7 @@ spec:
     path: kubernetes
     targetRevision: main
   destination:
-    server: https://
+    server: https://172.28.39.56:16443
     namespace: wanderlust
   syncPolicy:
     automated:
