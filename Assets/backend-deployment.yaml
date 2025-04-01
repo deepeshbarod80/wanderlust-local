@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: your-registry/wanderlust-backend:latest
+        image: deepeshbarod90/wanderlust-backend:latest
         ports:
         - containerPort: 8080
         envFrom:
